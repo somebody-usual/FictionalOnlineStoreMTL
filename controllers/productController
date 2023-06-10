@@ -1,0 +1,89 @@
+const product = require("../models/productModel");
+
+//add product
+const add_product = async(req, res) => {
+    try {
+        
+        var arrImages = [];
+        for(let i=0; i<req.files.length; i++){
+            arrImages[i] = req.file[i].filename;
+        }
+
+        var product = new Product({
+            product_id: req.body.product_id,
+            product_name: req.body.product_name,
+            category: req.body.category,
+            price: req.body.price,
+            description: req.body.description,
+            images: arrImages
+        });
+
+        const product_data = await product.save();
+
+        res.status(200).send({ success:true, msg:"Product Details", data:product_data});
+
+    } catch (error) {
+        res.status(400).send({ sucess:false, msg: error.message});
+    }
+}
+
+
+//read product
+const read_product = async(req, res) => {
+    var productId = req.body.productId;
+    product.findOne({"product_id":{$regex: productId, $options:'i'}})
+    .then((docs) => {
+        res.status(200).send({success:true, msg:"Result", data:docs})
+    })
+    .catch((err)=>{
+        res.status(200).send({success:false, msg:err})
+    })
+}
+
+
+//update product
+const update_product = async(req, res) => {
+    var productId = req.body.productId;
+    product.findByIdAndUpdate({"product_id":{$regex: productId, $options:'i'}})
+}
+ 
+
+//delete product
+const delete_product = async(req, res) => {
+    var productId = req.body.productId;
+    product.findOneAndRemove({"product_id":{$regex: productId, $options:'i'}}, function(err, docs){
+        if (err) {
+            console.log(err);
+        } else {
+            console.log("Remove User: ", docs);
+        }
+    });
+}
+
+
+
+//to search product
+const search_product = async(req, res) => {
+    try {
+        var search = req.body.search;
+        var product_details = Product.find({"name":{$regex: '.*'+search+'.*', $options:'i'}});
+        if (product_details.length > 0 ) {
+            res.status(200).send({success:true, msg:"Product Details.", data:product_details});
+        } else {
+            res.status(200).send({success:true, msg:"Product not found!"});
+        }
+
+    } catch (error) {
+        res.status(400).send({success:false, msg:error.message});
+    }
+}
+
+
+
+module.exports = {
+    add_product,
+    read_product,
+    update_product,
+    delete_product,
+    search_product
+}

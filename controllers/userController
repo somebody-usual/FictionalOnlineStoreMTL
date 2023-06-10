@@ -1,0 +1,111 @@
+const User = require('../models/userModel');
+const bcryptjs = require("bcryptjs");
+const config = require('../config/config');
+const jwt = require('jsonwebtoken');
+
+
+// function to create token
+const createToken = async(id) =>{
+    try {
+        //creating authentication token
+        const token = await jwt.sign({_id:id}, config.secret_key);
+        return token;
+
+    } catch (error) {
+        res.status(400).send(error.message);
+    }
+}
+
+
+
+// Function to hash password
+const securePassword = async(password) =>{
+
+    try{
+        const hashPassword = await bcryptjs.hash(password, 10);
+        return hashPassword;
+    }catch(error){
+        res.status(400).send(error.message);
+    }
+
+}
+
+
+//For registering user
+const registerUser = async(req, res) =>{
+    try {
+        // Calling function to hash password
+        const mypassword = await securePassword(req.body.password);
+        // Creating new user
+        const user = new User({
+            name: req.body.name,
+            contactNumber: req.body.contactNumber,
+            email: req.body.email,
+            password: mypassword,
+            type:req.body.type
+        });
+
+        // Checking if the user already exits or not?
+        const userData = await User.findOne({email:req.body.email});
+        if(userData){
+            res.status(200).send({success:false, msg:"Email already in use!"});
+        }else{
+            //Saving the user in db if it does not exist.
+            const user_data = await user.save();
+            res.status(200).send({success:true, data:user_data});
+        }        
+    } catch (error) {
+        res.status(400).send(error.message);
+    }
+}
+
+
+
+//For logging user in
+const user_login = async(req, res) =>{
+    try {
+        // getting the data entered by the user
+        const email = req.body.email;
+        const password = req.body.password;
+
+        // getting user data corrosponding to the email user entered
+        user_data = await User.findOne({email: email});
+
+        if (user_data) {
+            const passwordMatch = await bcryptjs.compare(password, user_data.password);
+            if (passwordMatch) {
+
+                // token
+                const tokenData = await createToken(user_data._id);
+
+                const userDetails = {
+                    _id: user_data._id,
+                    name: user_data.name,
+                    contactNumber: user_data.contactNumber,
+                    email: user_data.email,
+                    password: user_data.password,
+                    token: tokenData
+                }
+                const response = {
+                    success: true,
+                    msg: "User Details",
+                    data: userDetails
+                }
+                res.status(200).send(response);
+            } else {
+                res.status(200).send({success:false, msg: "Incorrect login details"});
+            }
+        } else {
+            res.status(200).send({success:false, msg: "Incorrect login details"});
+        }
+        
+    } catch (error) {
+        res.status(400).send(error.message);
+    }
+}
+
+
+module.exports = {
+    registerUser,
+    user_login
+}
